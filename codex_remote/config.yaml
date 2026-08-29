@@ -1,0 +1,22 @@
+name: "Codex Direct Remote"
+version: "0.2.0"
+slug: "codex_remote"
+description: "Headless OpenAI Codex Remote Control host for Home Assistant OS"
+url: "https://github.com/vladtsit/haos-codex-direct-remote"
+arch:
+  - amd64
+  - aarch64
+startup: services
+boot: auto
+init: false
+host_network: false
+privileged: []
+full_access: false
+options:
+  mode: "run"
+  git_repo: ""
+  git_branch: "main"
+schema:
+  mode: "list(login|pair|run|stop|doctor)"
+  git_repo: "str?"
+  git_branch: "str"
