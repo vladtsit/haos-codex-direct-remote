@@ -21,6 +21,24 @@ idle_forever() {
   while true; do sleep 3600; done
 }
 
+CODEX_PINNED_VERSION="0.151.0"
+STANDALONE_CODEX="${HOME_DIR}/.codex/packages/standalone/current/codex"
+
+# codex remote-control refuses to run unless this installer-managed copy exists at a fixed
+# CODEX_HOME path (separate from the npm-installed CLI used for login/doctor).
+ensure_standalone_codex() {
+  if [[ -x "${STANDALONE_CODEX}" ]]; then
+    return 0
+  fi
+  bashio::log.info "Installing Codex standalone runtime (required by remote-control)..."
+  env HOME="${HOME_DIR}" CODEX_HOME="${HOME_DIR}/.codex" USER="${USER_NAME}" \
+    CODEX_NON_INTERACTIVE=true CODEX_RELEASE="${CODEX_PINNED_VERSION}" \
+    su-exec "${USER_NAME}" sh -c 'curl -fsSL https://chatgpt.com/codex/install.sh | sh' || {
+    bashio::log.warning "Standalone Codex install failed; remote-control will not start."
+    return 1
+  }
+}
+
 MODE="$(bashio::config 'mode')"
 GIT_BRANCH="$(bashio::config 'git_branch')"
 
@@ -42,12 +60,14 @@ case "${MODE}" in
   login)
     bashio::log.info "Starting Codex device authentication."
     bashio::log.info "Complete the URL/code shown below, then change mode to 'pair'."
-    cd "${PROJECT_DIR}"
-    exec env HOME="${HOME_DIR}" CODEX_HOME="${HOME_DIR}/.codex" USER="${USER_NAME}" \
-      su-exec "${USER_NAME}" codex login --device-auth
+    run_as_codex codex login --device-auth || \
+      bashio::log.warning "Login did not complete; change mode to 'login' and restart to retry."
+    bashio::log.info "Login step finished. Change mode to 'pair' and restart."
+    idle_forever
     ;;
 
   pair)
+    ensure_standalone_codex || true
     bashio::log.info "Starting managed Codex Remote Control daemon..."
     run_as_codex codex remote-control start --json || \
       bashio::log.warning "Remote Control start failed; will retry from the watch loop."
@@ -66,6 +86,7 @@ case "${MODE}" in
     ;;
 
   run)
+    ensure_standalone_codex || true
     bashio::log.info "Ensuring managed Remote Control is running..."
     run_as_codex codex remote-control start --json || \
       bashio::log.warning "Remote Control start failed; will retry from the watch loop."
