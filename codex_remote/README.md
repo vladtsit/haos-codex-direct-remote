@@ -103,7 +103,7 @@ After using `stop` or `doctor`, change `mode` back to `run` (or another mode) an
 
 ## Updating the pinned Codex CLI version
 
-The Dockerfile pins an exact `@openai/codex` version deliberately, so a Supervisor rebuild always reproduces a known-good release instead of silently picking up whatever is newest at build time. To upgrade: edit the version in [Dockerfile](Dockerfile), bump `version` in [config.yaml](config.yaml), and rebuild/update the add-on.
+Codex is installed exclusively via OpenAI's standalone installer at container startup (`codex remote-control` refuses to run against any other install method), pinned deliberately so a restart always reproduces a known-good release instead of silently picking up whatever is newest. To upgrade: edit `CODEX_PINNED_VERSION` in [run.sh](run.sh), bump `version` in [config.yaml](config.yaml), and rebuild/update the add-on.
 
 ## Security notes
 

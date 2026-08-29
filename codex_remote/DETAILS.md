@@ -67,10 +67,10 @@ codex-cli 0.151.0
 
 This version was selected because it matches the known-working Linux VPS environment.
 
-The Dockerfile contains:
+Codex is installed exclusively through OpenAI's standalone installer, run at container startup (not via npm in the Dockerfile), because `codex remote-control` refuses to run against any other install method. The pin lives in `run.sh`:
 
-```dockerfile
-RUN npm install -g @openai/codex@0.151.0
+```bash
+CODEX_PINNED_VERSION="0.151.0"
 ```
 
 Do not upgrade Codex until the second Remote environment is confirmed working.
@@ -960,16 +960,16 @@ Persistent `/data` should remain intact across updates.
 
 Do not automatically follow latest while initially validating the setup.
 
-Current pin:
+Current pin, in `run.sh`:
 
-```dockerfile
-RUN npm install -g @openai/codex@0.151.0
+```bash
+CODEX_PINNED_VERSION="0.151.0"
 ```
 
 To upgrade later:
 
-```dockerfile
-RUN npm install -g @openai/codex@NEW_VERSION
+```bash
+CODEX_PINNED_VERSION="NEW_VERSION"
 ```
 
 Then increment the app version.

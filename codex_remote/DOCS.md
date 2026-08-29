@@ -6,7 +6,7 @@
 - `stop`: stops managed Remote Control
 - `doctor`: prints `codex doctor --json`
 
-The image pins Codex CLI 0.151.0 to match the known-working VPS.
+The image installs Codex via OpenAI's standalone installer at container startup (required by `remote-control`), pinned to 0.151.0 via `CODEX_PINNED_VERSION` in `run.sh` to match the known-working VPS.
 
 Recovery:
 If the daemon becomes stale/unmanaged, restart the Home Assistant app/container first.

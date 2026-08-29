@@ -24,17 +24,18 @@ idle_forever() {
 CODEX_PINNED_VERSION="0.151.0"
 STANDALONE_CODEX="${HOME_DIR}/.codex/packages/standalone/current/codex"
 
-# codex remote-control refuses to run unless this installer-managed copy exists at a fixed
-# CODEX_HOME path (separate from the npm-installed CLI used for login/doctor).
+# remote-control requires this installer-managed copy at a fixed CODEX_HOME path; using it
+# exclusively (no npm install) keeps one binary, one version pin, no PATH ambiguity, and no
+# risk of npm's own background auto-update silently drifting past CODEX_PINNED_VERSION.
 ensure_standalone_codex() {
   if [[ -x "${STANDALONE_CODEX}" ]]; then
     return 0
   fi
-  bashio::log.info "Installing Codex standalone runtime (required by remote-control)..."
+  bashio::log.info "Installing Codex standalone runtime (pinned ${CODEX_PINNED_VERSION})..."
   env HOME="${HOME_DIR}" CODEX_HOME="${HOME_DIR}/.codex" USER="${USER_NAME}" \
     CODEX_NON_INTERACTIVE=true CODEX_RELEASE="${CODEX_PINNED_VERSION}" \
     su-exec "${USER_NAME}" sh -c 'curl -fsSL https://chatgpt.com/codex/install.sh | sh' || {
-    bashio::log.warning "Standalone Codex install failed; remote-control will not start."
+    bashio::log.warning "Standalone Codex install failed."
     return 1
   }
 }
@@ -42,7 +43,8 @@ ensure_standalone_codex() {
 MODE="$(bashio::config 'mode')"
 GIT_BRANCH="$(bashio::config 'git_branch')"
 
-bashio::log.info "Codex version: $(codex --version)"
+ensure_standalone_codex || bashio::log.warning "Continuing without a working Codex install; commands below will fail."
+bashio::log.info "Codex version: $("${STANDALONE_CODEX}" --version 2>/dev/null || echo unavailable)"
 bashio::log.info "Mode: ${MODE}"
 bashio::log.info "Persistent state: ${HOME_DIR}/.codex"
 bashio::log.info "Project: ${PROJECT_DIR}"
@@ -60,19 +62,18 @@ case "${MODE}" in
   login)
     bashio::log.info "Starting Codex device authentication."
     bashio::log.info "Complete the URL/code shown below, then change mode to 'pair'."
-    run_as_codex codex login --device-auth || \
+    run_as_codex "${STANDALONE_CODEX}" login --device-auth || \
       bashio::log.warning "Login did not complete; change mode to 'login' and restart to retry."
     bashio::log.info "Login step finished. Change mode to 'pair' and restart."
     idle_forever
     ;;
 
   pair)
-    ensure_standalone_codex || true
     bashio::log.info "Starting managed Codex Remote Control daemon..."
-    run_as_codex codex remote-control start --json || \
+    run_as_codex "${STANDALONE_CODEX}" remote-control start --json || \
       bashio::log.warning "Remote Control start failed; will retry from the watch loop."
     bashio::log.info "Requesting a manual pairing code..."
-    run_as_codex codex remote-control pair --json || \
+    run_as_codex "${STANDALONE_CODEX}" remote-control pair --json || \
       bashio::log.warning "Pair request failed; restart again in pair mode for a fresh code."
     bashio::log.info "Enter manualPairingCode in the mobile Codex Remote pairing flow."
     bashio::log.info "After pairing, change mode to 'run'."
@@ -80,34 +81,33 @@ case "${MODE}" in
       sleep 300
       if ! pgrep -f "codex app-server.*--remote-control" >/dev/null 2>&1; then
         bashio::log.warning "Remote app-server stopped; requesting managed restart."
-        run_as_codex codex remote-control start --json || true
+        run_as_codex "${STANDALONE_CODEX}" remote-control start --json || true
       fi
     done
     ;;
 
   run)
-    ensure_standalone_codex || true
     bashio::log.info "Ensuring managed Remote Control is running..."
-    run_as_codex codex remote-control start --json || \
+    run_as_codex "${STANDALONE_CODEX}" remote-control start --json || \
       bashio::log.warning "Remote Control start failed; will retry from the watch loop."
     bashio::log.info "Codex Direct Remote is online."
     while true; do
       sleep 300
       if ! pgrep -f "codex app-server.*--remote-control" >/dev/null 2>&1; then
         bashio::log.warning "Remote app-server stopped; requesting managed restart."
-        run_as_codex codex remote-control start --json || true
+        run_as_codex "${STANDALONE_CODEX}" remote-control start --json || true
       fi
     done
     ;;
 
   stop)
-    run_as_codex codex remote-control stop --json || true
+    run_as_codex "${STANDALONE_CODEX}" remote-control stop --json || true
     bashio::log.info "Stopped. Change mode before starting again."
     idle_forever
     ;;
 
   doctor)
-    run_as_codex codex doctor --json || true
+    run_as_codex "${STANDALONE_CODEX}" doctor --json || true
     bashio::log.info "Diagnostics complete. Change mode before starting again."
     idle_forever
     ;;
