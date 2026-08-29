@@ -3,8 +3,8 @@ FROM ghcr.io/home-assistant/base:latest
 ARG BUILD_VERSION
 ARG BUILD_ARCH
 
-RUN apk add --no-cache bash ca-certificates curl git jq nodejs npm ripgrep fd procps
-RUN npm install -g @openai/codex
+RUN apk add --no-cache bash ca-certificates curl git jq nodejs npm ripgrep fd procps su-exec
+RUN npm install -g @openai/codex@0.151.0
 RUN adduser -D -u 1000 -h /data/home -s /bin/bash codex
 
 COPY run.sh /run.sh

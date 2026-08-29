@@ -2,15 +2,113 @@
 
 Runs OpenAI Codex directly as a headless Remote Control host inside a Home Assistant OS app/add-on.
 
-No Mac, Windows PC, SSH bridge, or Codex Desktop host is required.
+No Mac, Windows PC, SSH bridge, or Codex Desktop host is required. The container connects outbound to OpenAI's Remote Control infrastructure so it can be paired as a second, independent environment from the ChatGPT mobile app's Codex Remote section — alongside any existing VPS-hosted Remote environment, each with its own Codex identity.
 
-Persistent data:
-- `/data/home/.codex` — Codex auth, daemon identity/state, conversations
-- `/data/project` — project workspace
+```text
+ChatGPT / Codex mobile
+        │  OpenAI Remote Control (outbound only)
+        ▼
+Home Assistant OS
+        └── Codex Direct Remote app
+             ├── Codex CLI + app-server
+             ├── persistent Codex identity/auth
+             └── persistent project workspace
+```
 
-First-time setup:
-1. Set `mode: login`; start; complete device login from logs.
-2. Set `mode: pair`; restart; enter `manualPairingCode` in mobile Remote.
-3. Set `mode: run`; restart and leave it there.
+---
 
-Do not copy `.codex` from another host. This second HAOS instance should have its own identity.
+## Requirements
+
+- A Home Assistant OS (or Supervised) host with internet egress.
+- `amd64` or `aarch64` architecture (see `arch` in [config.yaml](config.yaml)).
+- An OpenAI/ChatGPT account with Codex access, used to pair this instance as a **new, separate** Remote environment (do not reuse credentials/state from another host — see [Security notes](#security-notes)).
+
+## Installation
+
+1. In Home Assistant, go to **Settings → Add-ons → Add-on Store**.
+2. Open the **⋮** menu (top right) → **Repositories**, and add this repository's URL (see [repository.yaml](../repository.yaml) for the canonical name/URL).
+3. Find **Codex Direct Remote** in the store and click **Install**.
+4. Do not start it yet — configure it first (next section).
+
+## Configuration
+
+Set these under the add-on's **Configuration** tab:
+
+| Option | Default | Description |
+|---|---|---|
+| `mode` | `run` | One of `login`, `pair`, `run`, `stop`, `doctor`. See [First-time setup](#first-time-setup) and [Modes reference](#modes-reference). |
+| `git_repo` | _(unset)_ | Optional git URL. If `/data/project` is empty, it's cloned in automatically on startup. Leave unset to manage the project directory yourself. |
+| `git_branch` | `main` | Branch used for that initial clone. |
+
+Notes:
+- Don't put long-lived credentials in `git_repo`. If you must use an authenticated URL, treat it as a secret — it grants repo access to anyone who can read the add-on config.
+- The add-on requests no special Home Assistant permissions: no host network, no privileged mode, no full access, no Supervisor API, no Docker socket (see `config.yaml`).
+
+## First-time setup
+
+Do these steps in order, changing `mode` and restarting the add-on between each one. This mirrors the flow in [DETAILS.md](DETAILS.md).
+
+### 1. Log in (`mode: login`)
+
+1. Set `mode: login`, save, and **Start** the add-on.
+2. Open the add-on **Log** tab. Codex prints a device login URL and code.
+3. Complete the login in a browser using the OpenAI/ChatGPT account you want this HAOS instance to use.
+4. Once login succeeds, move to step 2.
+
+### 2. Pair with the mobile app (`mode: pair`)
+
+1. Set `mode: pair`, save, and **Restart** the add-on.
+2. The add-on starts the managed Remote Control daemon and requests a manual pairing code.
+3. Watch the **Log** tab for a JSON blob containing `"manualPairingCode": "..."`.
+4. In the ChatGPT mobile app, open **Codex Remote → add environment → manual pairing** and enter that code.
+5. The code is short-lived. If it expires before you enter it: leave `mode: pair`, **Restart** the add-on again, and use the fresh code immediately.
+6. Once the HAOS environment shows up in the mobile app, move to step 3.
+
+### 3. Run (`mode: run`)
+
+1. Set `mode: run`, save, and **Restart** the add-on.
+2. Leave it in this mode permanently. The add-on keeps the Remote Control app-server alive and restarts it if the process disappears.
+
+## Everyday use
+
+With `mode: run`, no further action is needed on the HAOS side — drive everything from the ChatGPT mobile app's Remote interface. The add-on:
+
+- Persists Codex auth/identity/state in `/data/home/.codex` and your project files in `/data/project` across restarts and updates.
+- Checks every 5 minutes that the Remote Control app-server is still alive, and asks Codex to restart it if not.
+- Logs status lines (`Mode: run`, `Codex Direct Remote is online.`, etc.) to the add-on **Log** tab.
+
+### Working with a project
+
+- If `git_repo` was set before the first start and `/data/project` was empty, it's cloned automatically.
+- Otherwise, use a Codex Remote session (once paired) to `git clone`/initialize the project directly inside `/data/project`, or set `git_repo`/`git_branch` and restart before the directory has any content.
+
+## Modes reference
+
+| Mode | What it does |
+|---|---|
+| `login` | Runs `codex login --device-auth`; prints a device URL/code to the log. Use once, then switch to `pair`. |
+| `pair` | Starts the managed Remote Control daemon and requests a manual pairing code for the mobile app. Use until pairing succeeds, then switch to `run`. |
+| `run` | Normal always-on mode. Ensures Remote Control is running and self-heals if the app-server process dies. |
+| `stop` | Stops the managed Remote Control daemon and idles. Use to temporarily take this environment offline without uninstalling. |
+| `doctor` | Runs `codex doctor --json` and prints diagnostics to the log, then idles. Use for troubleshooting. |
+
+After using `stop` or `doctor`, change `mode` back to `run` (or another mode) and restart to resume normal operation.
+
+## Troubleshooting
+
+- **Pairing code expired**: restart while still in `mode: pair` to get a fresh code, and enter it right away.
+- **Remote environment not responding / stuck daemon**: restart the add-on itself first — this kills any orphaned Codex processes while keeping `/data` intact. Then re-apply `mode: run`.
+- **Diagnose Codex's own view of its environment**: set `mode: doctor`, restart, and read the log output.
+- **Nothing shows in the log**: confirm the add-on is actually started (not just saved) and check **Supervisor → System** for outbound network connectivity issues.
+
+## Updating the pinned Codex CLI version
+
+The Dockerfile pins an exact `@openai/codex` version deliberately, so a Supervisor rebuild always reproduces a known-good release instead of silently picking up whatever is newest at build time. To upgrade: edit the version in [Dockerfile](Dockerfile), bump `version` in [config.yaml](config.yaml), and rebuild/update the add-on.
+
+## Security notes
+
+- Do not copy `.codex` from another Codex host into this add-on's `/data/home/.codex`. This HAOS instance is meant to be its own independent Remote Control identity, separate from any VPS or desktop Codex environment you already use.
+- Treat `/data/home/.codex` as sensitive: it holds auth/identity state. Don't commit it to git or share it.
+- The add-on has no inbound ports, no SSH server, and no web terminal — Codex only makes outbound connections to OpenAI's Remote Control infrastructure.
+
+For the full architecture, security model, and design rationale, see [DETAILS.md](DETAILS.md). For a condensed mode reference, see [DOCS.md](DOCS.md).

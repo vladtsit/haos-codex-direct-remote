@@ -14,7 +14,6 @@ privileged: []
 full_access: false
 options:
   mode: "run"
-  git_repo: ""
   git_branch: "main"
 schema:
   mode: "list(login|pair|run|stop|doctor)"
