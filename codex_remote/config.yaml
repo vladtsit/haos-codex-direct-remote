@@ -1,5 +1,5 @@
 name: "Codex Direct Remote"
-version: "0.4.0"
+version: "0.5.0"
 slug: "codex_remote"
 description: "Headless OpenAI Codex Remote Control host for Home Assistant OS"
 url: "https://github.com/vladtsit/haos-codex-direct-remote"
@@ -12,6 +12,10 @@ init: false
 host_network: false
 privileged: []
 full_access: false
+ports:
+  "2222/tcp": 2222
+ports_description:
+  "2222/tcp": "SSH (public-key only, user 'codex') for interactive/VS Code Remote-SSH access"
 options:
   mode: "run"
   git_branch: "main"
@@ -19,3 +23,4 @@ schema:
   mode: "list(login|pair|run|stop|doctor)"
   git_repo: "str?"
   git_branch: "str"
+  ssh_authorized_keys: "str?"

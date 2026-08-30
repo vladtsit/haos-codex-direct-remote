@@ -23,6 +23,8 @@ idle_forever() {
 
 CODEX_PINNED_VERSION="0.151.0"
 STANDALONE_CODEX="${HOME_DIR}/.codex/packages/standalone/current/codex"
+SSH_HOST_KEY_DIR="${HOME_DIR}/.ssh_host_keys"
+SSH_AUTHORIZED_KEYS_FILE="${HOME_DIR}/.ssh/authorized_keys"
 
 # remote-control requires this installer-managed copy at a fixed CODEX_HOME path; using it
 # exclusively (no npm install) keeps one binary, one version pin, no PATH ambiguity, and no
@@ -40,10 +42,54 @@ ensure_standalone_codex() {
   }
 }
 
+# Opt-in SSH access (public-key only) for interactive shells / VS Code Remote-SSH; disabled
+# unless ssh_authorized_keys is set, since password auth is never enabled and an empty key
+# list would just open a port nobody can authenticate against.
+ensure_ssh_server() {
+  if ! bashio::config.has_value 'ssh_authorized_keys'; then
+    bashio::log.info "ssh_authorized_keys not set; SSH access disabled."
+    return 0
+  fi
+
+  mkdir -p "${SSH_HOST_KEY_DIR}" "${HOME_DIR}/.ssh"
+  local key_type
+  for key_type in rsa ecdsa ed25519; do
+    local key_path="${SSH_HOST_KEY_DIR}/ssh_host_${key_type}_key"
+    [[ -f "${key_path}" ]] || ssh-keygen -t "${key_type}" -f "${key_path}" -N "" -q
+  done
+
+  bashio::config 'ssh_authorized_keys' > "${SSH_AUTHORIZED_KEYS_FILE}"
+  chmod 700 "${HOME_DIR}/.ssh"
+  chmod 600 "${SSH_AUTHORIZED_KEYS_FILE}"
+  chown -R "${USER_NAME}:${USER_NAME}" "${HOME_DIR}/.ssh" "${SSH_HOST_KEY_DIR}"
+
+  cat > /etc/ssh/sshd_config_codex <<EOF
+Port 2222
+HostKey ${SSH_HOST_KEY_DIR}/ssh_host_rsa_key
+HostKey ${SSH_HOST_KEY_DIR}/ssh_host_ecdsa_key
+HostKey ${SSH_HOST_KEY_DIR}/ssh_host_ed25519_key
+PermitRootLogin no
+PasswordAuthentication no
+KbdInteractiveAuthentication no
+PubkeyAuthentication yes
+AllowUsers ${USER_NAME}
+Subsystem sftp /usr/lib/ssh/sftp-server
+PidFile ${HOME_DIR}/.ssh/sshd.pid
+EOF
+
+  /usr/sbin/sshd -f /etc/ssh/sshd_config_codex || {
+    bashio::log.warning "sshd failed to start."
+    return 1
+  }
+  bashio::log.info "SSH server listening on container port 2222 (public-key only, user '${USER_NAME}')."
+}
+
 MODE="$(bashio::config 'mode')"
 GIT_BRANCH="$(bashio::config 'git_branch')"
 
 ensure_standalone_codex || bashio::log.warning "Continuing without a working Codex install; commands below will fail."
+[[ -x "${STANDALONE_CODEX}" ]] && ln -sf "${STANDALONE_CODEX}" /usr/local/bin/codex
+ensure_ssh_server || true
 bashio::log.info "Codex version: $("${STANDALONE_CODEX}" --version 2>/dev/null || echo unavailable)"
 bashio::log.info "Mode: ${MODE}"
 bashio::log.info "Persistent state: ${HOME_DIR}/.codex"

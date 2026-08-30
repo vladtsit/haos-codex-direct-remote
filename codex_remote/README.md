@@ -39,6 +39,7 @@ Set these under the add-on's **Configuration** tab:
 | `mode` | `run` | One of `login`, `pair`, `run`, `stop`, `doctor`. See [First-time setup](#first-time-setup) and [Modes reference](#modes-reference). |
 | `git_repo` | _(unset)_ | Optional git URL. If `/data/project` is empty, it's cloned in automatically on startup. Leave unset to manage the project directory yourself. |
 | `git_branch` | `main` | Branch used for that initial clone. |
+| `ssh_authorized_keys` | _(unset)_ | Optional. One or more SSH public keys (one per line). Setting this enables an SSH server on container port 2222 for interactive/VS Code Remote-SSH access. Leave unset to keep SSH disabled entirely. |
 
 Notes:
 - Don't put long-lived credentials in `git_repo`. If you must use an authenticated URL, treat it as a secret — it grants repo access to anyone who can read the add-on config.
@@ -105,10 +106,23 @@ After using `stop` or `doctor`, change `mode` back to `run` (or another mode) an
 
 Codex is installed exclusively via OpenAI's standalone installer at container startup (`codex remote-control` refuses to run against any other install method), pinned deliberately so a restart always reproduces a known-good release instead of silently picking up whatever is newest. To upgrade: edit `CODEX_PINNED_VERSION` in [run.sh](run.sh), bump `version` in [config.yaml](config.yaml), and rebuild/update the add-on.
 
+## SSH access (optional)
+
+By default there is no SSH server. Setting `ssh_authorized_keys` enables one, for interactive shells or VS Code's Remote-SSH extension:
+
+1. Paste one or more SSH **public** keys (never a private key) into `ssh_authorized_keys`, one per line, and restart the add-on.
+2. Under **Settings → Add-ons → Codex Direct Remote → Network**, the add-on exposes container port `2222/tcp`; note (or change) the host port it's mapped to.
+3. Connect as the unprivileged `codex` user, e.g. `ssh -p 2222 codex@<haos-ip>`. Files you edit under `/data/project` are already owned by `codex`. The pinned `codex` CLI is on `PATH`.
+4. Only public-key auth is accepted — password and root login are both disabled in `sshd_config`. Host keys are generated once and persisted under `/data/home/.ssh_host_keys`, so they survive restarts/updates (no repeated "host key changed" warnings).
+
+**VS Code Remote-SSH caveat**: this add-on runs on Alpine (musl libc), while VS Code's official remote server is built for glibc. The image includes `gcompat` (Alpine's glibc compatibility shim) as a best-effort fix, but Microsoft doesn't officially support Alpine remotes — if the VS Code server fails to install itself over SSH, a plain terminal-based `ssh` session still works for running `codex`, git, and editing files directly.
+
+This opens an inbound port on your LAN; only enable it if you need direct shell access, and keep your private key secure.
+
 ## Security notes
 
 - Do not copy `.codex` from another Codex host into this add-on's `/data/home/.codex`. This HAOS instance is meant to be its own independent Remote Control identity, separate from any VPS or desktop Codex environment you already use.
 - Treat `/data/home/.codex` as sensitive: it holds auth/identity state. Don't commit it to git or share it.
-- The add-on has no inbound ports, no SSH server, and no web terminal — Codex only makes outbound connections to OpenAI's Remote Control infrastructure.
+- By default, the add-on has no inbound ports, no SSH server, and no web terminal — Codex only makes outbound connections to OpenAI's Remote Control infrastructure. SSH is opt-in; see [SSH access](#ssh-access-optional).
 
 For the full architecture, security model, and design rationale, see [DETAILS.md](DETAILS.md). For a condensed mode reference, see [DOCS.md](DOCS.md).
