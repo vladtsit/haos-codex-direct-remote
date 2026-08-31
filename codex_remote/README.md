@@ -115,7 +115,7 @@ By default there is no SSH server. Setting `ssh_authorized_keys` enables one, fo
 3. Connect as the unprivileged `codex` user, e.g. `ssh -p 2222 codex@<haos-ip>`. Files you edit under `/data/project` are already owned by `codex`. The pinned `codex` CLI is on `PATH`.
 4. Only public-key auth is accepted — password and root login are both disabled in `sshd_config`. Host keys are generated once and persisted under `/data/home/.ssh_host_keys`, so they survive restarts/updates (no repeated "host key changed" warnings).
 
-**VS Code Remote-SSH caveat**: this add-on runs on Alpine (musl libc), while VS Code's official remote server is built for glibc. The image includes `gcompat` (Alpine's glibc compatibility shim) as a best-effort fix, but Microsoft doesn't officially support Alpine remotes — if the VS Code server fails to install itself over SSH, a plain terminal-based `ssh` session still works for running `codex`, git, and editing files directly.
+**VS Code Remote-SSH caveat**: this add-on runs on Alpine (musl libc), while VS Code's official remote server is built for glibc. The image includes `gcompat` (Alpine's glibc compatibility shim), and Remote-SSH connects successfully with it in practice — though Microsoft doesn't officially support Alpine remotes, so treat this as best-effort.
 
 This opens an inbound port on your LAN; only enable it if you need direct shell access, and keep your private key secure.
 

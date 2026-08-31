@@ -62,9 +62,6 @@ ensure_ssh_server() {
   chmod 700 "${HOME_DIR}/.ssh"
   chmod 600 "${SSH_AUTHORIZED_KEYS_FILE}"
   chown -R "${USER_NAME}:${USER_NAME}" "${HOME_DIR}/.ssh" "${SSH_HOST_KEY_DIR}"
-  # surfaces corruption/format issues in the configured key without ever printing the key itself
-  bashio::log.info "authorized_keys fingerprint(s): $(ssh-keygen -lf "${SSH_AUTHORIZED_KEYS_FILE}" 2>&1)"
-  bashio::log.info "path ownership/modes: $(stat -c '%n %U:%G %a' /data /data/home "${HOME_DIR}/.ssh" "${SSH_AUTHORIZED_KEYS_FILE}" 2>&1 | tr '\n' ' ')"
 
   cat > /etc/ssh/sshd_config_codex <<EOF
 Port 2222
@@ -78,10 +75,6 @@ PubkeyAuthentication yes
 AllowUsers ${USER_NAME}
 Subsystem sftp /usr/lib/ssh/sftp-server
 PidFile ${HOME_DIR}/.ssh/sshd.pid
-# host bind-mounted /data is not multi-tenant; StrictModes' ownership/mode chain check on it
-# is a common false-positive source for silent pubkey rejection in containerized volumes
-StrictModes no
-LogLevel DEBUG3
 EOF
 
   /usr/sbin/sshd -f /etc/ssh/sshd_config_codex -D -e >>"${HOME_DIR}/.ssh/sshd.log" 2>&1 &
