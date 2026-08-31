@@ -15,6 +15,10 @@ Home Assistant OS
              └── persistent project workspace
 ```
 
+## Example use case
+
+Install [ha-mcp](https://github.com/homeassistant-ai/ha-mcp) alongside this add-on, point it at your local Home Assistant URL, then ask Codex to configure it as an MCP server. From then on, Codex can manage Home Assistant directly — writing automations, dashboards, and templates — through a chat session from the Codex/ChatGPT mobile app, with no other host or SSH bridge involved. Secure and convenient!
+
 ---
 
 ## Requirements

@@ -3,6 +3,11 @@
 All notable changes to this add-on are documented here. Format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## 1.0.0
+
+### Added
+- README "Example use case" section describing pairing with [ha-mcp](https://github.com/homeassistant-ai/ha-mcp) to manage Home Assistant (automations, dashboards, templates) from a Codex mobile chat session.
+
 ## 0.7.1
 
 ### Fixed
