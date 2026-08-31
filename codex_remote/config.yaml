@@ -1,5 +1,5 @@
 name: "Codex Direct Remote"
-version: "0.5.4"
+version: "0.5.5"
 slug: "codex_remote"
 description: "Headless OpenAI Codex Remote Control host for Home Assistant OS"
 url: "https://github.com/vladtsit/haos-codex-direct-remote"
