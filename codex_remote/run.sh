@@ -62,6 +62,8 @@ ensure_ssh_server() {
   chmod 700 "${HOME_DIR}/.ssh"
   chmod 600 "${SSH_AUTHORIZED_KEYS_FILE}"
   chown -R "${USER_NAME}:${USER_NAME}" "${HOME_DIR}/.ssh" "${SSH_HOST_KEY_DIR}"
+  # surfaces corruption/format issues in the configured key without ever printing the key itself
+  bashio::log.info "authorized_keys fingerprint(s): $(ssh-keygen -lf "${SSH_AUTHORIZED_KEYS_FILE}" 2>&1)"
 
   cat > /etc/ssh/sshd_config_codex <<EOF
 Port 2222
