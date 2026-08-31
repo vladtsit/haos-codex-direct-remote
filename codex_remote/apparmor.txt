@@ -1,0 +1,37 @@
+#include <tunables/global>
+
+profile codex_remote flags=(attach_disconnected,mediate_deleted) {
+  #include <abstractions/base>
+  #include <abstractions/bash>
+  #include <abstractions/nameservice>
+
+  file,
+  signal (send) set=(kill,term,int,hup,cont),
+  signal (receive) set=(kill,term,int,hup,cont),
+
+  # entrypoint and everything it execs: bash, curl, git, ssh-keygen, sshd, su-exec, codex
+  /run.sh r,
+  /bin/** ix,
+  /usr/bin/** ix,
+  /usr/sbin/** ix,
+  /usr/local/bin/** ix,
+  /sbin/** ix,
+
+  # persistent state (codex identity, ssh host keys, authorized_keys) and project files
+  /data/** rw,
+
+  # optional read-only Home Assistant config access (only present if `map: homeassistant_config` is used)
+  /homeassistant_config/** r,
+
+  # sshd (privsep chroot, pty allocation, host key generation)
+  /etc/ssh/** rw,
+  /var/empty/** r,
+  /dev/pts/* rw,
+  /dev/ptmx rw,
+  /dev/tty rw,
+  /dev/null rw,
+  /dev/urandom r,
+  /proc/sys/kernel/random/uuid r,
+  /run/** rwk,
+  /tmp/** rwk,
+}

@@ -6,7 +6,7 @@
 - `stop`: stops managed Remote Control
 - `doctor`: prints `codex doctor --json`
 
-The image installs Codex via OpenAI's standalone installer at container startup (required by `remote-control`), pinned to 0.151.0 via `CODEX_PINNED_VERSION` in `run.sh` to match the known-working VPS.
+The image installs Codex via OpenAI's standalone installer at container startup (required by `remote-control`), pinned by default to 0.151.0 in `run.sh`, overridable per-install with the `codex_version` option (auto-reinstalls on a version mismatch).
 
 Optional SSH (public-key only, disabled unless `ssh_authorized_keys` is set) is available on container port 2222 for interactive shell / VS Code Remote-SSH access. See README.md.
 

@@ -1,4 +1,5 @@
-FROM ghcr.io/home-assistant/base:latest
+# pinned (not :latest) for reproducible builds; bump deliberately when needed
+FROM ghcr.io/home-assistant/base:3.24-2026.08.0
 
 ARG BUILD_VERSION
 ARG BUILD_ARCH

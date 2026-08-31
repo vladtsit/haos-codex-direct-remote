@@ -1,5 +1,5 @@
 name: "Codex Direct Remote"
-version: "0.6.0"
+version: "0.7.0"
 slug: "codex_remote"
 description: "Headless OpenAI Codex Remote Control host for Home Assistant OS"
 url: "https://github.com/vladtsit/haos-codex-direct-remote"
@@ -16,6 +16,17 @@ ports:
   "2222/tcp": 2222
 ports_description:
   "2222/tcp": "SSH (public-key only, user 'codex') for interactive/VS Code Remote-SSH access"
+# host key files auto-regenerate if missing, so excluding them from backups only costs a
+# one-time "host key changed" SSH warning, not data loss; identity/auth state in .codex is
+# deliberately NOT excluded so a backup restore doesn't force re-login/re-pairing.
+backup_exclude:
+  - "home/.ssh_host_keys/**"
+# read-only access to HA's own /config; installing/updating to a version that declares this
+# is how HA add-ons grant this kind of capability (there is no separate runtime on/off toggle) -
+# stay on 0.6.0 if you don't want to grant it. See README's "Home Assistant config access" section.
+map:
+  - type: homeassistant_config
+    read_only: true
 options:
   mode: "run"
   git_branch: "main"
@@ -24,3 +35,4 @@ schema:
   git_repo: "str?"
   git_branch: "str"
   ssh_authorized_keys: "str?"
+  codex_version: "str?"

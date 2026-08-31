@@ -67,15 +67,17 @@ codex-cli 0.151.0
 
 This version was selected because it matches the known-working Linux VPS environment.
 
-Codex is installed exclusively through OpenAI's standalone installer, run at container startup (not via npm in the Dockerfile), because `codex remote-control` refuses to run against any other install method. The pin lives in `run.sh`:
+Codex is installed exclusively through OpenAI's standalone installer, run at container startup (not via npm in the Dockerfile), because `codex remote-control` refuses to run against any other install method. The pin's default lives in `run.sh`:
 
 ```bash
-CODEX_PINNED_VERSION="0.151.0"
+DEFAULT_CODEX_VERSION="0.151.0"
 ```
+
+It can be overridden per-install via the `codex_version` config option (see [README.md](README.md)) without editing this file. On startup, the add-on compares the installed binary's version against the pin and reinstalls automatically on a mismatch.
 
 Do not upgrade Codex until the second Remote environment is confirmed working.
 
-Once the environment is stable, the pinned version can be updated deliberately.
+Once the environment is stable, the pinned version can be updated deliberately via `codex_version`.
 
 ---
 
@@ -166,12 +168,13 @@ full_access: false
 The app does not intentionally receive:
 
 ```text
-Home Assistant /config
 Supervisor API
 Docker socket
 host filesystem
 root access to HAOS
 ```
+
+As of this version, the app does declare **read-only** access to Home Assistant's own `/config` (via `map: homeassistant_config, read_only: true` in `config.yaml`), mounted at `/homeassistant_config` inside the container. Home Assistant's add-on model has no runtime on/off switch for `map` entries — the grant applies to anyone who installs/updates to this version. See README's "Home Assistant config access" section for the full rationale and how to opt out (stay on an earlier version, or remove the entry in a fork).
 
 The intended security boundary is:
 
@@ -196,13 +199,11 @@ Do not add privileged mode or full host access unless you explicitly understand 
 
 # Network model
 
-No inbound port is exposed by default.
+No inbound port is required for Codex Remote Control itself — the container always connects outbound to OpenAI's infrastructure regardless of any other setting.
 
-There is no SSH server.
+An optional SSH server (public-key only) can be enabled by setting `ssh_authorized_keys`; see README's [SSH access](README.md#ssh-access-optional) section. It is disabled by default, and even when the container port is mapped, nothing listens on it until a key is configured.
 
 There is no web terminal.
-
-There is no required port-forwarding rule.
 
 The expected network model is:
 

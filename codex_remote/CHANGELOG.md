@@ -3,6 +3,25 @@
 All notable changes to this add-on are documented here. Format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## 0.7.0
+
+### Added
+- `icon.png` at the add-on root (Supervisor store/info page icon).
+- `apparmor.txt`: a custom AppArmor profile (first pass, not yet verified against real hardware — disable via `apparmor: false` in `config.yaml` or delete the file if it causes unexpected denials).
+- `codex_version` config option to override the pinned Codex CLI release without editing `run.sh`.
+- Read-only access to Home Assistant's own `/config` (`map: homeassistant_config, read_only: true`). This is an install/update-time permission grant, not a runtime toggle — see README's "Home Assistant config access" section.
+- `backup_exclude` for `home/.ssh_host_keys/**` (auto-regenerates; excluding it avoids storing private host keys in every Supervisor backup with no real backup value).
+
+### Fixed
+- Codex CLI version pin was only applied on first install; changing the pin (or now, `codex_version`) had no effect on an already-provisioned `/data`. The add-on now compares the installed binary's version against the pin on every startup and reinstalls on a mismatch.
+- `sshd.log` grew unbounded across restarts; it is now truncated each time the SSH server is (re)started.
+- Stale `app-server-control` state (from a previous container lifetime) could cause `remote-control start` to fail with "failed to read start time for pid-managed app server"; this state is now cleared on every startup.
+
+### Changed
+- Base image is now pinned to `ghcr.io/home-assistant/base:3.24-2026.08.0` instead of `:latest`, for reproducible builds (Supervisor's old `build.yaml`/`BUILD_FROM` mechanism is deprecated as of Supervisor 2026.04.0).
+- The `pair`/`run` watch loops now use `codex remote-control status --json` to check daemon health (falling back to the previous `pgrep` process match if that subcommand isn't supported), and poll every 60s instead of every 300s.
+- Corrected README wording that claimed "no inbound ports" — container port 2222 is always mapped, but nothing listens on it unless `ssh_authorized_keys` is set.
+
 ## 0.6.0
 
 ### Added

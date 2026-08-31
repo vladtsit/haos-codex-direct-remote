@@ -21,17 +21,26 @@ idle_forever() {
   while true; do sleep 3600; done
 }
 
-CODEX_PINNED_VERSION="0.151.0"
+DEFAULT_CODEX_VERSION="0.151.0"
 STANDALONE_CODEX="${HOME_DIR}/.codex/packages/standalone/current/codex"
 SSH_HOST_KEY_DIR="${HOME_DIR}/.ssh_host_keys"
 SSH_AUTHORIZED_KEYS_FILE="${HOME_DIR}/.ssh/authorized_keys"
+APP_SERVER_CONTROL_DIR="${HOME_DIR}/.codex/app-server-control"
 
 # remote-control requires this installer-managed copy at a fixed CODEX_HOME path; using it
 # exclusively (no npm install) keeps one binary, one version pin, no PATH ambiguity, and no
 # risk of npm's own background auto-update silently drifting past CODEX_PINNED_VERSION.
+# Reinstalls automatically if the installed binary doesn't match the pin (e.g. after the
+# pin was bumped), since /data persists across restarts/rebuilds and a stale binary would
+# otherwise never get replaced.
 ensure_standalone_codex() {
   if [[ -x "${STANDALONE_CODEX}" ]]; then
-    return 0
+    local installed_version
+    installed_version="$("${STANDALONE_CODEX}" --version 2>/dev/null | awk '{print $NF}')"
+    if [[ "${installed_version}" == "${CODEX_PINNED_VERSION}" ]]; then
+      return 0
+    fi
+    bashio::log.info "Installed Codex ${installed_version:-unknown} != pinned ${CODEX_PINNED_VERSION}; reinstalling..."
   fi
   bashio::log.info "Installing Codex standalone runtime (pinned ${CODEX_PINNED_VERSION})..."
   env HOME="${HOME_DIR}" CODEX_HOME="${HOME_DIR}/.codex" USER="${USER_NAME}" \
@@ -40,6 +49,17 @@ ensure_standalone_codex() {
     bashio::log.warning "Standalone Codex install failed."
     return 1
   }
+}
+
+# codex remote-control status is preferred (reports the daemon's own view of health); if
+# this Codex version doesn't support that subcommand, fall back to a process-name match.
+remote_control_alive() {
+  local status_json
+  if status_json="$(run_as_codex "${STANDALONE_CODEX}" remote-control status --json 2>/dev/null)"; then
+    echo "${status_json}" | grep -qiE '"status"[[:space:]]*:[[:space:]]*"(connected|running|bootstrapped)"'
+    return $?
+  fi
+  pgrep -f "codex app-server.*--remote-control" >/dev/null 2>&1
 }
 
 # Opt-in SSH access (public-key only) for interactive shells / VS Code Remote-SSH; disabled
@@ -52,6 +72,7 @@ ensure_ssh_server() {
   fi
 
   mkdir -p "${SSH_HOST_KEY_DIR}" "${HOME_DIR}/.ssh"
+  : > "${HOME_DIR}/.ssh/sshd.log"
   local key_type
   for key_type in rsa ecdsa ed25519; do
     local key_path="${SSH_HOST_KEY_DIR}/ssh_host_${key_type}_key"
@@ -100,10 +121,19 @@ EOF
 
 MODE="$(bashio::config 'mode')"
 GIT_BRANCH="$(bashio::config 'git_branch')"
+if bashio::config.has_value 'codex_version'; then
+  CODEX_PINNED_VERSION="$(bashio::config 'codex_version')"
+else
+  CODEX_PINNED_VERSION="${DEFAULT_CODEX_VERSION}"
+fi
 
 ensure_standalone_codex || bashio::log.warning "Continuing without a working Codex install; commands below will fail."
 [[ -x "${STANDALONE_CODEX}" ]] && ln -sf "${STANDALONE_CODEX}" /usr/local/bin/codex
 ensure_ssh_server || true
+# any prior app-server-control state is guaranteed stale after a fresh container start
+# (its PID tracking refers to a process from a namespace that no longer exists); clearing
+# it avoids "failed to read start time for pid-managed app server" errors from a stale entry
+rm -rf "${APP_SERVER_CONTROL_DIR}"
 bashio::log.info "Codex version: $("${STANDALONE_CODEX}" --version 2>/dev/null || echo unavailable)"
 bashio::log.info "Mode: ${MODE}"
 bashio::log.info "Persistent state: ${HOME_DIR}/.codex"
@@ -138,8 +168,8 @@ case "${MODE}" in
     bashio::log.info "Enter manualPairingCode in the mobile Codex Remote pairing flow."
     bashio::log.info "After pairing, change mode to 'run'."
     while true; do
-      sleep 300
-      if ! pgrep -f "codex app-server.*--remote-control" >/dev/null 2>&1; then
+      sleep 60
+      if ! remote_control_alive; then
         bashio::log.warning "Remote app-server stopped; requesting managed restart."
         run_as_codex "${STANDALONE_CODEX}" remote-control start --json || true
       fi
@@ -152,8 +182,8 @@ case "${MODE}" in
       bashio::log.warning "Remote Control start failed; will retry from the watch loop."
     bashio::log.info "Codex Direct Remote is online."
     while true; do
-      sleep 300
-      if ! pgrep -f "codex app-server.*--remote-control" >/dev/null 2>&1; then
+      sleep 60
+      if ! remote_control_alive; then
         bashio::log.warning "Remote app-server stopped; requesting managed restart."
         run_as_codex "${STANDALONE_CODEX}" remote-control start --json || true
       fi

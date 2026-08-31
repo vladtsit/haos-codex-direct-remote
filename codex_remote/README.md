@@ -40,6 +40,7 @@ Set these under the add-on's **Configuration** tab:
 | `git_repo` | _(unset)_ | Optional git URL. If `/data/project` is empty, it's cloned in automatically on startup. Leave unset to manage the project directory yourself. |
 | `git_branch` | `main` | Branch used for that initial clone. |
 | `ssh_authorized_keys` | _(unset)_ | Optional. One or more SSH public keys (one per line). Setting this enables an SSH server on container port 2222 for interactive/VS Code Remote-SSH access. Leave unset to keep SSH disabled entirely. |
+| `codex_version` | _(unset, pins to the add-on's built-in default)_ | Optional. Overrides the pinned Codex CLI release without editing `run.sh`. The add-on detects a mismatch against the installed binary and reinstalls automatically. |
 
 Notes:
 - Don't put long-lived credentials in `git_repo`. If you must use an authenticated URL, treat it as a secret — it grants repo access to anyone who can read the add-on config.
@@ -104,7 +105,7 @@ After using `stop` or `doctor`, change `mode` back to `run` (or another mode) an
 
 ## Updating the pinned Codex CLI version
 
-Codex is installed exclusively via OpenAI's standalone installer at container startup (`codex remote-control` refuses to run against any other install method), pinned deliberately so a restart always reproduces a known-good release instead of silently picking up whatever is newest. To upgrade: edit `CODEX_PINNED_VERSION` in [run.sh](run.sh), bump `version` in [config.yaml](config.yaml), and rebuild/update the add-on.
+Codex is installed exclusively via OpenAI's standalone installer at container startup (`codex remote-control` refuses to run against any other install method), pinned deliberately so a restart always reproduces a known-good release instead of silently picking up whatever is newest. To upgrade, set the `codex_version` option (see the table above) and restart — the add-on detects the version mismatch against the already-installed binary and reinstalls automatically. Without a fork, `codex_version` is the only supported way to change it; the built-in default in [run.sh](run.sh) only matters if you leave the option unset.
 
 ## SSH access (optional)
 
@@ -119,10 +120,15 @@ By default there is no SSH server. Setting `ssh_authorized_keys` enables one, fo
 
 This opens an inbound port on your LAN; only enable it if you need direct shell access, and keep your private key secure.
 
+## Home Assistant config access (optional capability)
+
+Starting with this version, the add-on declares **read-only** access to Home Assistant's own `/config` directory (mounted at `/homeassistant_config` inside the container), so a Codex session can inspect `configuration.yaml`, automations, etc. This is a real permission grant, not a runtime toggle: Home Assistant add-ons can't make `map` entries conditional on an option, so it's present for anyone who installs/updates to this version. If you don't want Codex to have any access to your HA config, stay on `0.6.0` or remove the `map` entry from your own fork. It is intentionally read-only — Codex cannot modify your HA configuration through this mount.
+
 ## Security notes
 
 - Do not copy `.codex` from another Codex host into this add-on's `/data/home/.codex`. This HAOS instance is meant to be its own independent Remote Control identity, separate from any VPS or desktop Codex environment you already use.
-- Treat `/data/home/.codex` as sensitive: it holds auth/identity state. Don't commit it to git or share it.
-- By default, the add-on has no inbound ports, no SSH server, and no web terminal — Codex only makes outbound connections to OpenAI's Remote Control infrastructure. SSH is opt-in; see [SSH access](#ssh-access-optional).
+- Treat `/data/home/.codex` as sensitive: it holds auth/identity state. Don't commit it to git or share it. It's intentionally *included* in Supervisor backups (so a restore doesn't force re-login/re-pairing) — treat backup archives as similarly sensitive.
+- `/data/home/.ssh_host_keys` is excluded from backups (`backup_exclude` in [config.yaml](config.yaml)) since it auto-regenerates on next start; restoring an old backup will just cost a one-time "host key changed" SSH warning.
+- By default, the add-on has no listening services and makes no use of its declared port — Codex only makes outbound connections to OpenAI's Remote Control infrastructure. Container port 2222 is always mapped for convenience, but nothing listens on it, and SSH itself is opt-in; see [SSH access](#ssh-access-optional). HA config access is opt-in at the install/update level; see above.
 
 For the full architecture, security model, and design rationale, see [DETAILS.md](DETAILS.md). For a condensed mode reference, see [DOCS.md](DOCS.md).
