@@ -73,7 +73,7 @@ Codex is installed exclusively through OpenAI's standalone installer, run at con
 DEFAULT_CODEX_VERSION="0.151.0"
 ```
 
-It can be overridden per-install via the `codex_version` config option (see [README.md](README.md)) without editing this file. On startup, the add-on compares the installed binary's version against the pin and reinstalls automatically on a mismatch.
+It can be overridden per-install via the `codex_version` config option (see [README.md](../README.md)) without editing this file. On startup, the add-on compares the installed binary's version against the pin and reinstalls automatically on a mismatch.
 
 Do not upgrade Codex until the second Remote environment is confirmed working.
 
@@ -201,7 +201,7 @@ Do not add privileged mode or full host access unless you explicitly understand 
 
 No inbound port is required for Codex Remote Control itself — the container always connects outbound to OpenAI's infrastructure regardless of any other setting.
 
-An optional SSH server (public-key only) can be enabled by setting `ssh_authorized_keys`; see README's [SSH access](README.md#ssh-access-optional) section. It is disabled by default, and even when the container port is mapped, nothing listens on it until a key is configured.
+An optional SSH server (public-key only) can be enabled by setting `ssh_authorized_keys`; see README's [SSH access](../README.md#ssh-access-optional) section. It is disabled by default, and even when the container port is mapped, nothing listens on it until a key is configured.
 
 There is no web terminal.
 

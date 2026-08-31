@@ -24,13 +24,13 @@ Install [ha-mcp](https://github.com/homeassistant-ai/ha-mcp) alongside this add-
 ## Requirements
 
 - A Home Assistant OS (or Supervised) host with internet egress.
-- `amd64` or `aarch64` architecture (see `arch` in [config.yaml](config.yaml)).
+- `amd64` or `aarch64` architecture (see `arch` in [config.yaml](codex_remote/config.yaml)).
 - An OpenAI/ChatGPT account with Codex access, used to pair this instance as a **new, separate** Remote environment (do not reuse credentials/state from another host — see [Security notes](#security-notes)).
 
 ## Installation
 
 1. In Home Assistant, go to **Settings → Add-ons → Add-on Store**.
-2. Open the **⋮** menu (top right) → **Repositories**, and add this repository's URL (see [repository.yaml](../repository.yaml) for the canonical name/URL).
+2. Open the **⋮** menu (top right) → **Repositories**, and add this repository's URL (see [repository.yaml](repository.yaml) for the canonical name/URL).
 3. Find **Codex Direct Remote** in the store and click **Install**.
 4. Do not start it yet — configure it first (next section).
 
@@ -52,7 +52,7 @@ Notes:
 
 ## First-time setup
 
-Do these steps in order, changing `mode` and restarting the add-on between each one. This mirrors the flow in [DETAILS.md](DETAILS.md).
+Do these steps in order, changing `mode` and restarting the add-on between each one. This mirrors the flow in [DETAILS.md](codex_remote/DETAILS.md).
 
 ### 1. Log in (`mode: login`)
 
@@ -135,4 +135,4 @@ Starting with this version, the add-on declares **read-only** access to Home Ass
 - `/data/home/.ssh_host_keys` is excluded from backups (`backup_exclude` in [config.yaml](config.yaml)) since it auto-regenerates on next start; restoring an old backup will just cost a one-time "host key changed" SSH warning.
 - By default, the add-on has no listening services and makes no use of its declared port — Codex only makes outbound connections to OpenAI's Remote Control infrastructure. Container port 2222 is always mapped for convenience, but nothing listens on it, and SSH itself is opt-in; see [SSH access](#ssh-access-optional). HA config access is opt-in at the install/update level; see above.
 
-For the full architecture, security model, and design rationale, see [DETAILS.md](DETAILS.md). For a condensed mode reference, see [DOCS.md](DOCS.md).
+For the full architecture, security model, and design rationale, see [DETAILS.md](codex_remote/DETAILS.md). For a condensed mode reference, see [DOCS.md](codex_remote/DOCS.md).
