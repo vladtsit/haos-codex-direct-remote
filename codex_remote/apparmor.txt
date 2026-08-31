@@ -1,11 +1,25 @@
 #include <tunables/global>
 
-profile codex_remote flags=(attach_disconnected,mediate_deleted) {
+# complain (not enforcing): first-pass profile, unverified against real hardware; the
+# chown/setuid/etc. calls in run.sh need capabilities that aren't granted below yet.
+# Once a run with no denials shows up in `journalctl _TRANSPORT="audit" -g 'apparmor="ALLOWED"'`,
+# remove the `complain` flag to actually enforce this profile.
+profile codex_remote flags=(attach_disconnected,mediate_deleted,complain) {
   #include <abstractions/base>
-  #include <abstractions/bash>
   #include <abstractions/nameservice>
 
   file,
+  network,
+  capability chown,
+  capability dac_override,
+  capability dac_read_search,
+  capability fowner,
+  capability fsetid,
+  capability kill,
+  capability setgid,
+  capability setuid,
+  capability sys_chroot,
+  capability audit_write,
   signal (send) set=(kill,term,int,hup,cont),
   signal (receive) set=(kill,term,int,hup,cont),
 

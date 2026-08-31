@@ -3,6 +3,16 @@
 All notable changes to this add-on are documented here. Format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## 0.7.1
+
+### Fixed
+- `apparmor.txt` had no `capability`/`network` rules, so the container failed to start at all (`chown: Operation not permitted` on every `/data/home` path). The profile now runs in `complain` mode (logs denials instead of enforcing them) with the missing capability/network rules added, until it can be verified clean on real hardware and enforcement re-enabled.
+- `remote_control_alive` now wraps the `remote-control status` call in `timeout 10` so a hang can't stall the watch loop indefinitely.
+- `codex_version` is now validated against a strict `X.Y.Z` pattern instead of any string, so a malformed value (e.g. a `v`-prefixed version) can't cause a reinstall loop on every restart.
+
+### Removed
+- `media/codex-remote.png`, a redundant ~1MB copy of the source image `icon.png` was generated from; unused otherwise.
+
 ## 0.7.0
 
 ### Added

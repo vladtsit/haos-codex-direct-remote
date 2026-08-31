@@ -52,10 +52,10 @@ ensure_standalone_codex() {
 }
 
 # codex remote-control status is preferred (reports the daemon's own view of health); if
-# this Codex version doesn't support that subcommand, fall back to a process-name match.
+# this Codex version doesn't support that subcommand (or hangs), fall back to a process match.
 remote_control_alive() {
   local status_json
-  if status_json="$(run_as_codex "${STANDALONE_CODEX}" remote-control status --json 2>/dev/null)"; then
+  if status_json="$(timeout 10 run_as_codex "${STANDALONE_CODEX}" remote-control status --json 2>/dev/null)"; then
     echo "${status_json}" | grep -qiE '"status"[[:space:]]*:[[:space:]]*"(connected|running|bootstrapped)"'
     return $?
   fi

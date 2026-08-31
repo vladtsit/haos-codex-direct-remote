@@ -1,5 +1,5 @@
 name: "Codex Direct Remote"
-version: "0.7.0"
+version: "0.7.1"
 slug: "codex_remote"
 description: "Headless OpenAI Codex Remote Control host for Home Assistant OS"
 url: "https://github.com/vladtsit/haos-codex-direct-remote"
@@ -35,4 +35,4 @@ schema:
   git_repo: "str?"
   git_branch: "str"
   ssh_authorized_keys: "str?"
-  codex_version: "str?"
+  codex_version: "match(^[0-9]+\\.[0-9]+\\.[0-9]+$)?"
