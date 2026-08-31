@@ -81,12 +81,18 @@ PidFile ${HOME_DIR}/.ssh/sshd.pid
 # host bind-mounted /data is not multi-tenant; StrictModes' ownership/mode chain check on it
 # is a common false-positive source for silent pubkey rejection in containerized volumes
 StrictModes no
+LogLevel DEBUG3
 EOF
 
-  /usr/sbin/sshd -f /etc/ssh/sshd_config_codex || {
+  /usr/sbin/sshd -f /etc/ssh/sshd_config_codex -e 2>>"${HOME_DIR}/.ssh/sshd.log" || {
     bashio::log.warning "sshd failed to start."
     return 1
   }
+  # there is no syslog daemon in this image, so sshd's own auth decisions (-e above) would
+  # otherwise go nowhere; stream them into the add-on log so auth failures are diagnosable
+  ( tail -n0 -F "${HOME_DIR}/.ssh/sshd.log" 2>/dev/null | while IFS= read -r line; do
+      bashio::log.info "[sshd] ${line}"
+    done & )
   bashio::log.info "SSH server listening on container port 2222 (public-key only, user '${USER_NAME}')."
 }
 
