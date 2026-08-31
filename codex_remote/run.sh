@@ -90,7 +90,8 @@ EOF
   }
   # there is no syslog daemon in this image, so sshd's own auth decisions (-e above) would
   # otherwise go nowhere; stream them into the add-on log so auth failures are diagnosable
-  ( tail -n0 -F "${HOME_DIR}/.ssh/sshd.log" 2>/dev/null | while IFS= read -r line; do
+  # (BusyBox tail has no -F, only -f; -F silently exited immediately, dropping all logging)
+  ( tail -n0 -f "${HOME_DIR}/.ssh/sshd.log" | while IFS= read -r line; do
       bashio::log.info "[sshd] ${line}"
     done & )
   bashio::log.info "SSH server listening on container port 2222 (public-key only, user '${USER_NAME}')."
