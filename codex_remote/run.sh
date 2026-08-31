@@ -84,17 +84,25 @@ StrictModes no
 LogLevel DEBUG3
 EOF
 
-  /usr/sbin/sshd -f /etc/ssh/sshd_config_codex -e 2>>"${HOME_DIR}/.ssh/sshd.log" || {
-    bashio::log.warning "sshd failed to start."
+  /usr/sbin/sshd -f /etc/ssh/sshd_config_codex -D -e >>"${HOME_DIR}/.ssh/sshd.log" 2>&1 &
+  local sshd_pid=$!
+  sleep 1
+  # sshd normally self-daemonizes (fork+detach); relying on fd redirection surviving that
+  # internal fork is fragile, so we keep it in the foreground (-D) and background it ourselves
+  if ! kill -0 "${sshd_pid}" 2>/dev/null; then
+    bashio::log.warning "sshd exited immediately; last log lines:"
+    tail -n 30 "${HOME_DIR}/.ssh/sshd.log" 2>/dev/null | while IFS= read -r line; do
+      bashio::log.warning "[sshd] ${line}"
+    done
     return 1
-  }
+  fi
   # there is no syslog daemon in this image, so sshd's own auth decisions (-e above) would
   # otherwise go nowhere; stream them into the add-on log so auth failures are diagnosable
   # (BusyBox tail has no -F, only -f; -F silently exited immediately, dropping all logging)
   ( tail -n0 -f "${HOME_DIR}/.ssh/sshd.log" | while IFS= read -r line; do
       bashio::log.info "[sshd] ${line}"
     done & )
-  bashio::log.info "SSH server listening on container port 2222 (public-key only, user '${USER_NAME}')."
+  bashio::log.info "SSH server listening on container port 2222 (public-key only, user '${USER_NAME}', pid ${sshd_pid})."
 }
 
 MODE="$(bashio::config 'mode')"
