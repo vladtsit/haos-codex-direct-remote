@@ -30,7 +30,11 @@ run_as_codex() {
 # rsync (not cp -a) so a 60s-interval refresh only touches changed files instead of
 # rewriting the whole tree every cycle; .storage/*.db* excluded since they're HA's large
 # internal state (recorder DB, auth tokens) that isn't needed to read yaml config and
-# would otherwise dominate both the copy time and the size of the exposed mirror.
+# would otherwise dominate both the copy time and the size of the exposed mirror. Custom
+# integrations (HACS-installed or not) commonly vendor a compiled JS UI under a directory
+# named frontend/ or *_frontend/ (e.g. hacs_frontend, ugreen/frontend) that can outweigh
+# the integration's actual Python source 10-50x; excluded for the same reason, without
+# dropping custom_components/ entirely since its Python code can still be worth reading.
 sync_ha_config_mirror() {
   local src=""
   [[ -d /homeassistant ]] && src="/homeassistant"
@@ -47,6 +51,7 @@ sync_ha_config_mirror() {
     --exclude 'esphome/' --exclude 'zigbee2mqtt/' --exclude 'image/' \
     --exclude 'tmp_backups/' --exclude '*.log' --exclude '*.log.fault' \
     --exclude 'go2rtc-*' \
+    --exclude 'frontend/' --exclude '*_frontend/' --exclude '__pycache__/' \
     "${src}/" "${HA_CONFIG_MIRROR}/" 2>/dev/null || true
   chown -R "${USER_NAME}:${USER_NAME}" "${HA_CONFIG_MIRROR}"
   chmod -R u+rX,go-rwx "${HA_CONFIG_MIRROR}"

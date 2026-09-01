@@ -3,6 +3,11 @@
 All notable changes to this add-on are documented here. Format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## 1.0.6
+
+### Changed
+- The `~/ha_config_ro` mirror's exclude list now also skips any directory named `frontend/` or `*_frontend/` (e.g. `custom_components/hacs/hacs_frontend`, `custom_components/ugreen/frontend`) and `__pycache__/`. On a real-world config with several HACS-installed integrations, these compiled/vendored JS UI bundles accounted for ~93MB of a ~95MB mirror — 10-50x the size of the integration's actual Python source — while being irrelevant to reading config/automations. `custom_components/` itself is still mirrored (its Python source can be worth reading), only these vendored asset subdirectories are skipped.
+
 ## 1.0.5
 
 ### Changed
