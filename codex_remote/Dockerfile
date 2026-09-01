@@ -4,7 +4,7 @@ FROM ghcr.io/home-assistant/base:3.24-2026.08.0
 ARG BUILD_VERSION
 ARG BUILD_ARCH
 
-RUN apk add --no-cache bash ca-certificates curl git jq ripgrep fd procps su-exec openssh gcompat sudo
+RUN apk add --no-cache bash ca-certificates curl git jq ripgrep fd procps su-exec openssh gcompat sudo rsync
 # adduser -D leaves the shadow password "!"-locked, which sshd's platform_locked_account()
 # check rejects for ALL auth methods (including pubkey), not just password; delete the
 # password hash instead so the account is unlocked while password login stays disabled

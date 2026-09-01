@@ -3,6 +3,16 @@
 All notable changes to this add-on are documented here. Format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## 1.0.3
+
+### Changed
+- The `/homeassistant` → `/data/ha_config_ro` mirror added in 1.0.2 now uses `rsync -a --delete` instead of `cp -a`, so the ~60s periodic refresh only touches changed files instead of rewriting the whole tree every cycle, and excludes `.storage/` (HA's own internal auth tokens/state), the recorder database, `www/`, `tts/`, `media/`, and `backups/` — none of that is needed to read `configuration.yaml`/automations/scripts, and skipping it keeps the mirror smaller and faster on installs with a large `/config`.
+
+## 1.0.2
+
+### Fixed
+- The `sudo` grant added in 1.0.1 for reading `/homeassistant` doesn't actually help from inside a Codex session: Codex's own exec sandbox sets `no_new_privileges`, which silently blocks the setuid `sudo` binary from escalating there (it works fine over plain SSH, which isn't inside that sandbox). `run.sh` now also mirrors `/homeassistant` to a plain `codex`-owned copy at `/data/ha_config_ro` at startup and every ~60s while running, so a read from that path needs no privilege escalation at all and works from Codex sessions too. `sudo` is left in place for interactive SSH use.
+
 ## 1.0.1
 
 ### Added

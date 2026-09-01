@@ -4,6 +4,7 @@ set -euo pipefail
 USER_NAME="codex"
 HOME_DIR="/data/home"
 PROJECT_DIR="/data/project"
+HA_CONFIG_MIRROR="/data/ha_config_ro"
 
 mkdir -p "${HOME_DIR}/.codex" "${PROJECT_DIR}"
 chown -R "${USER_NAME}:${USER_NAME}" "${HOME_DIR}" "${PROJECT_DIR}"
@@ -15,6 +16,30 @@ run_as_codex() {
     exec env HOME="${HOME_DIR}" CODEX_HOME="${HOME_DIR}/.codex" USER="${USER_NAME}" \
       su-exec "${USER_NAME}" "$@"
   )
+}
+
+# HA's homeassistant_config mount is 0700 root:root and read-only, so it can't be chmod'd
+# open. sudo can't help either: a Codex session's own tool calls run inside Codex's exec
+# sandbox, which sets no_new_privileges, and that silently blocks the setuid sudo binary
+# from escalating (it works fine over plain SSH, which isn't inside that sandbox). Instead,
+# mirror it as a plain codex-owned copy while still root at startup - a later read from
+# that copy needs no privilege escalation at all, so it works inside the sandbox too.
+# rsync (not cp -a) so a 60s-interval refresh only touches changed files instead of
+# rewriting the whole tree every cycle; .storage/*.db* excluded since they're HA's large
+# internal state (recorder DB, auth tokens) that isn't needed to read yaml config and
+# would otherwise dominate both the copy time and the size of the exposed mirror.
+sync_ha_config_mirror() {
+  local src=""
+  [[ -d /homeassistant ]] && src="/homeassistant"
+  [[ -z "${src}" && -d /homeassistant_config ]] && src="/homeassistant_config"
+  [[ -n "${src}" ]] || return 0
+  mkdir -p "${HA_CONFIG_MIRROR}"
+  rsync -a --delete \
+    --exclude '.storage/' --exclude '*.db' --exclude '*.db-wal' --exclude '*.db-shm' \
+    --exclude 'www/' --exclude 'tts/' --exclude 'media/' --exclude 'backups/' \
+    "${src}/" "${HA_CONFIG_MIRROR}/" 2>/dev/null || true
+  chown -R "${USER_NAME}:${USER_NAME}" "${HA_CONFIG_MIRROR}"
+  chmod -R u+rX,go-rwx "${HA_CONFIG_MIRROR}"
 }
 
 idle_forever() {
@@ -130,6 +155,7 @@ fi
 ensure_standalone_codex || bashio::log.warning "Continuing without a working Codex install; commands below will fail."
 [[ -x "${STANDALONE_CODEX}" ]] && ln -sf "${STANDALONE_CODEX}" /usr/local/bin/codex
 ensure_ssh_server || true
+sync_ha_config_mirror
 # any prior app-server-control state is guaranteed stale after a fresh container start
 # (its PID tracking refers to a process from a namespace that no longer exists); clearing
 # it avoids "failed to read start time for pid-managed app server" errors from a stale entry
@@ -169,6 +195,7 @@ case "${MODE}" in
     bashio::log.info "After pairing, change mode to 'run'."
     while true; do
       sleep 60
+      sync_ha_config_mirror
       if ! remote_control_alive; then
         bashio::log.warning "Remote app-server stopped; requesting managed restart."
         run_as_codex "${STANDALONE_CODEX}" remote-control start --json || true
@@ -183,6 +210,7 @@ case "${MODE}" in
     bashio::log.info "Codex Direct Remote is online."
     while true; do
       sleep 60
+      sync_ha_config_mirror
       if ! remote_control_alive; then
         bashio::log.warning "Remote app-server stopped; requesting managed restart."
         run_as_codex "${STANDALONE_CODEX}" remote-control start --json || true
