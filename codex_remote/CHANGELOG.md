@@ -3,6 +3,14 @@
 All notable changes to this add-on are documented here. Format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## 1.0.1
+
+### Added
+- Passwordless, unrestricted `sudo` for the `codex` user (`/etc/sudoers.d/codex`). The `homeassistant_config` mount is `0700 root:root` on the host side (some Supervisor versions expose it at `/homeassistant` rather than the previously-assumed `/homeassistant_config`) and can't be made readable via `chmod`/`setfacl` since it's a read-only bind mount, so `sudo` is the only practical way for the unprivileged `codex` user to read it. This grant is broader than just `/config` access — see README's "Home Assistant config access" section for the tradeoff.
+
+### Fixed
+- `apparmor.txt` referenced `/homeassistant_config/**` for the optional config mount; corrected to `/homeassistant/**` to match the actual mount point.
+
 ## 1.0.0
 
 ### Added

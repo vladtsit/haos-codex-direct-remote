@@ -34,8 +34,11 @@ profile codex_remote flags=(attach_disconnected,mediate_deleted,complain) {
   # persistent state (codex identity, ssh host keys, authorized_keys) and project files
   /data/** rw,
 
-  # optional read-only Home Assistant config access (only present if `map: homeassistant_config` is used)
-  /homeassistant_config/** r,
+  # optional read-only Home Assistant config access (only present if `map: homeassistant_config` is used);
+  # actual mount point is /homeassistant, not /homeassistant_config (HAOS mounts it 0700 root:root,
+  # so reading it as the unprivileged codex user goes through sudo instead)
+  /homeassistant/** r,
+  /etc/sudoers.d/** r,
 
   # sshd (privsep chroot, pty allocation, host key generation)
   /etc/ssh/** rw,

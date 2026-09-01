@@ -174,7 +174,9 @@ host filesystem
 root access to HAOS
 ```
 
-As of this version, the app does declare **read-only** access to Home Assistant's own `/config` (via `map: homeassistant_config, read_only: true` in `config.yaml`), mounted at `/homeassistant_config` inside the container. Home Assistant's add-on model has no runtime on/off switch for `map` entries — the grant applies to anyone who installs/updates to this version. See README's "Home Assistant config access" section for the full rationale and how to opt out (stay on an earlier version, or remove the entry in a fork).
+As of this version, the app does declare **read-only** access to Home Assistant's own `/config` (via `map: homeassistant_config, read_only: true` in `config.yaml`), mounted at `/homeassistant` inside the container (some Supervisor versions use `/homeassistant_config` instead). Home Assistant's add-on model has no runtime on/off switch for `map` entries — the grant applies to anyone who installs/updates to this version. See README's "Home Assistant config access" section for the full rationale and how to opt out (stay on an earlier version, or remove the entry in a fork).
+
+That mount is `0700 root:root` on the host side, unreadable by the unprivileged `codex` user, and can't be relaxed via `chmod`/`setfacl` since it's read-only. The image grants `codex` passwordless, unrestricted `sudo` (`/etc/sudoers.d/codex`) as the only practical way to read it — see README for the security tradeoff this implies (full root inside the container, not just `/config` read access).
 
 The intended security boundary is:
 
