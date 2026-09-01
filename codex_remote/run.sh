@@ -4,7 +4,10 @@ set -euo pipefail
 USER_NAME="codex"
 HOME_DIR="/data/home"
 PROJECT_DIR="/data/project"
-HA_CONFIG_MIRROR="/data/ha_config_ro"
+# under HOME_DIR (not /data directly) so it shows up in the home-scoped file explorer
+# SSH/VS Code sessions land in; excluded from backups (config.yaml backup_exclude) since
+# it's a disposable cache regenerated every boot, not source data worth persisting
+HA_CONFIG_MIRROR="${HOME_DIR}/ha_config_ro"
 
 mkdir -p "${HOME_DIR}/.codex" "${PROJECT_DIR}"
 chown -R "${USER_NAME}:${USER_NAME}" "${HOME_DIR}" "${PROJECT_DIR}"

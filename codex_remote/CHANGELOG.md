@@ -3,6 +3,12 @@
 All notable changes to this add-on are documented here. Format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## 1.0.4
+
+### Changed
+- The HA config mirror moved from `/data/ha_config_ro` to `/data/home/ha_config_ro` (i.e. `~/ha_config_ro` for the `codex` user), so it shows up directly in the home-scoped file explorer that SSH/VS Code Remote-SSH sessions land in, instead of requiring a separate `/data/ha_config_ro` folder to be added to the workspace.
+- `ha_config_ro/**` added to `backup_exclude`: it's a disposable cache regenerated every ~60s from `/homeassistant`, not source data, so including it in every Supervisor backup only wasted space and needlessly duplicated sensitive HA config across backup archives.
+
 ## 1.0.3
 
 ### Changed
