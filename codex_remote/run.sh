@@ -37,9 +37,16 @@ sync_ha_config_mirror() {
   [[ -z "${src}" && -d /homeassistant_config ]] && src="/homeassistant_config"
   [[ -n "${src}" ]] || return 0
   mkdir -p "${HA_CONFIG_MIRROR}"
-  rsync -a --delete \
+  # --delete-excluded (not just --delete): without it, rsync protects already-excluded
+  # paths from deletion, so directories newly added to this exclude list would otherwise
+  # linger forever in a mirror populated by an older version of this script.
+  rsync -a --delete --delete-excluded \
     --exclude '.storage/' --exclude '*.db' --exclude '*.db-wal' --exclude '*.db-shm' \
     --exclude 'www/' --exclude 'tts/' --exclude 'media/' --exclude 'backups/' \
+    --exclude '.git/' --exclude '.cache/' --exclude '.cloud/' --exclude 'deps/' \
+    --exclude 'esphome/' --exclude 'zigbee2mqtt/' --exclude 'image/' \
+    --exclude 'tmp_backups/' --exclude '*.log' --exclude '*.log.fault' \
+    --exclude 'go2rtc-*' \
     "${src}/" "${HA_CONFIG_MIRROR}/" 2>/dev/null || true
   chown -R "${USER_NAME}:${USER_NAME}" "${HA_CONFIG_MIRROR}"
   chmod -R u+rX,go-rwx "${HA_CONFIG_MIRROR}"

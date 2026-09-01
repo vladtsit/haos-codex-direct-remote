@@ -3,6 +3,11 @@
 All notable changes to this add-on are documented here. Format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## 1.0.5
+
+### Changed
+- The `~/ha_config_ro` mirror's exclude list expanded beyond `.storage/`/the recorder DB/`www/`/`tts/`/`media/`/`backups/` to also skip `.git/`, `.cache/`, `.cloud/`, `deps/`, `esphome/`, `zigbee2mqtt/`, `image/`, `tmp_backups/`, `*.log`, and the `go2rtc-*` binary — on a real-world config these dominated the mirror size (measured at 244MB before this change) without being needed to read `configuration.yaml`/automations/scripts. Also switched from `--delete` to `--delete --delete-excluded`, since plain `--delete` protects already-excluded paths from removal — needed so a mirror populated by an older version of this script actually gets cleaned up on its next sync instead of the newly-excluded directories lingering forever.
+
 ## 1.0.4
 
 ### Changed
